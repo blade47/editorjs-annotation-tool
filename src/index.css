@@ -1,0 +1,50 @@
+.ce-inline-tool-annotation {
+    width: 24px;
+    background-color: transparent;
+    background-image: url('annotation.svg');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.annotation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.annotation-modal {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.annotation-modal label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.annotation-modal input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+
+.annotation-modal button {
+  margin-top: 10px;
+}
+
+.unclickable-annotation-modal-open {
+  pointer-events: none;
+  user-select: none;
+}
