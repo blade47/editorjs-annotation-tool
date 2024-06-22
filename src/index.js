@@ -118,6 +118,9 @@ class AnnotationTool {
       document.getElementById('annotation-publication').value = this.range.toString();
     }
 
+    const publicationInput = document.getElementById('annotation-publication');
+    publicationInput.addEventListener('input', this.updateText.bind(this));
+
     document.getElementById('annotation-save').addEventListener('click', () => {
       this.saveMetadata();
     });
@@ -125,6 +128,22 @@ class AnnotationTool {
     document.getElementById('annotation-cancel').addEventListener('click', () => {
       this.closeModal();
     });
+  }
+
+  updateText(event) {
+    const newText = event.target.value;
+
+    if (this.currentSpan) {
+      this.currentSpan.textContent = newText;
+    } else if (this.range) {
+      const span = document.createElement('span');
+      span.textContent = newText;
+      span.classList.add('annotation');
+
+      this.range.deleteContents();
+      this.range.insertNode(span);
+      this.currentSpan = span;
+    }
   }
 
   saveMetadata() {
@@ -157,7 +176,14 @@ class AnnotationTool {
     }
     document.body.classList.remove('unclickable-annotation-modal-open'); // Make the rest of the page clickable again
 
-    if (!this.saved && this.currentSpan) {
+    if (
+      !this.saved &&
+      this.currentSpan &&
+      !this.currentSpan.getAttribute('data-author') &&
+      !this.currentSpan.getAttribute('data-year') &&
+      !this.currentSpan.getAttribute('data-publication') &&
+      !this.currentSpan.getAttribute('data-journal')
+    ) {
       this.removeSpan();
     }
 
