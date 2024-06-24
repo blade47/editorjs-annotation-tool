@@ -1,3 +1,5 @@
+import './index.css';
+
 class AnnotationTool {
   static get isInline() {
     return true;
@@ -6,11 +8,13 @@ class AnnotationTool {
   static get sanitize() {
     return {
       span: {
+        class: true,
+        contenteditable: true,
+        style: true,
         'data-author': true,
         'data-year': true,
         'data-publication': true,
         'data-journal': true,
-        class: true,
       },
     };
   }
@@ -21,15 +25,13 @@ class AnnotationTool {
     this.modal = null;
     this.range = null;
     this.currentSpan = null;
-    this.saved = false; // Flag to track if changes were saved
+    this.saved = false;
   }
 
   render() {
     this.button = document.createElement('button');
     this.button.type = 'button';
-    this.button.innerHTML = 'New Reference';
-    this.button.classList.add('cdx-inline-tool');
-
+    this.button.classList.add('ce-inline-tool', 'ce-inline-tool-annotation');
     this.button.addEventListener('click', () => {
       const selection = window.getSelection();
       if (selection.rangeCount > 0) {
@@ -50,8 +52,8 @@ class AnnotationTool {
     const span = document.createElement('span');
     span.appendChild(selectedText);
     span.classList.add('annotation');
-
-    span.addEventListener('dblclick', () => this.editAnnotation(span));
+    span.setAttribute('contenteditable', 'false');
+    this.addEventListenerToSpan(span);
 
     this.range.insertNode(span);
     this.api.selection.expandToTag(span);
@@ -60,19 +62,28 @@ class AnnotationTool {
 
   checkState() {
     const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      this.button.classList.add('cdx-inline-tool--active');
-    } else {
-      this.button.classList.remove('cdx-inline-tool--active');
-    }
+    if (!selection.rangeCount) return;
+
+    const parent = selection.anchorNode.parentElement;
+    this.button.classList.toggle(
+      'ce-inline-tool--active',
+      parent && parent.closest('span.annotation')
+    );
   }
 
   showModal() {
-    this.saved = false; // Reset saved flag whenever modal is shown
+    if (document.querySelector('.annotation-modal-overlay')) {
+      return;
+    }
+    this.saved = false;
     this.modal = document.createElement('div');
     this.modal.classList.add('annotation-modal-overlay');
     this.modal.innerHTML = `
       <div class="annotation-modal">
+        <label>
+          Name of the Publication:
+          <input type="text" id="annotation-publication">
+        </label>
         <label>
           Authors (comma-separated):
           <input type="text" id="annotation-author">
@@ -80,10 +91,6 @@ class AnnotationTool {
         <label>
           Year of Publication:
           <input type="text" id="annotation-year">
-        </label>
-        <label>
-          Name of the Publication:
-          <input type="text" id="annotation-publication">
         </label>
         <label>
           Journal:
@@ -95,6 +102,8 @@ class AnnotationTool {
     `;
 
     document.body.appendChild(this.modal);
+    document.body.classList.add('unclickable-annotation-modal-open'); // Make the rest of the page unclickable
+    this.modal.style.pointerEvents = 'auto'; // Ensure modal and its contents are clickable
 
     if (this.currentSpan) {
       document.getElementById('annotation-author').value =
@@ -156,30 +165,17 @@ class AnnotationTool {
       this.currentSpan.setAttribute('data-journal', journal);
     }
 
-    this.saved = true; // Set saved flag to true when saving
+    this.saved = true;
     this.closeModal();
   }
 
-  removeSpan() {
-    if (this.currentSpan) {
-      const parent = this.currentSpan.parentNode;
-      while (this.currentSpan.firstChild) {
-        parent.insertBefore(this.currentSpan.firstChild, this.currentSpan);
-      }
-      parent.removeChild(this.currentSpan);
-    }
-  }
-
-  editAnnotation(span) {
-    this.currentSpan = span;
-    this.showModal();
-  }
-
   closeModal() {
-    document.body.removeChild(this.modal);
-    this.modal = null;
+    if (this.modal) {
+      document.body.removeChild(this.modal);
+      this.modal = null;
+    }
+    document.body.classList.remove('unclickable-annotation-modal-open'); // Make the rest of the page clickable again
 
-    // Check if the span has any attribute set, if not remove the span
     if (
       !this.saved &&
       this.currentSpan &&
@@ -193,6 +189,38 @@ class AnnotationTool {
 
     this.range = null;
     this.currentSpan = null;
+  }
+
+  removeSpan() {
+    if (this.currentSpan) {
+      const parent = this.currentSpan.parentNode;
+      while (this.currentSpan.firstChild) {
+        parent.insertBefore(this.currentSpan.firstChild, this.currentSpan);
+      }
+      parent.removeChild(this.currentSpan);
+    }
+  }
+
+  addEventListenerToSpan(span) {
+    if (span) {
+      const eventListenerExists = !!span.getAttribute('data-event-listener-added');
+      if (!eventListenerExists) {
+        span.addEventListener('click', () => this.editAnnotation(span));
+        span.setAttribute('data-event-listener-added', 'true');
+      }
+    }
+  }
+
+  addEventListenerToSpans() {
+    const spans = document.querySelectorAll('span.annotation');
+    spans.forEach((span) => {
+      this.addEventListenerToSpan(span);
+    });
+  }
+
+  editAnnotation(span) {
+    this.currentSpan = span;
+    this.showModal();
   }
 }
 
