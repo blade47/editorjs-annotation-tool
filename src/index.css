@@ -7,6 +7,13 @@
     background-repeat: no-repeat;
 }
 
+.annotation {
+  display: inline-block;
+  padding: .25em 0;
+  background: rgba(245,235,111,.29);
+  border-radius: 10px;
+}
+
 .annotation-modal-overlay {
   position: fixed;
   top: 0;
