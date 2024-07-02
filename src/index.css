@@ -12,6 +12,7 @@
   padding: .25em 0;
   background: rgba(245,235,111,.29);
   border-radius: 10px;
+  cursor: pointer;
 }
 
 .annotation-modal-overlay {
@@ -28,16 +29,18 @@
 }
 
 .annotation-modal {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  max-width: 400px;
-  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  color: #000;
+  text-align: center;
+  border-radius: 20px;
+  padding: 30px 30px 70px;
 }
 
 .annotation-modal label {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 40px;
 }
 
 .annotation-modal input {
@@ -47,11 +50,26 @@
   box-sizing: border-box;
 }
 
-.annotation-modal button {
-  margin-top: 10px;
+.annotation-modal-button {
+  padding: 14px;
+  font-size: 16px;
+  color: white;
+  align-self: center;
+  border: .1px solid grey;
+  width: auto;
+  border-radius: 5px;
+  height: 100%;
+  cursor: pointer;
+  background-color: #1F1646;
 }
 
-.unclickable-annotation-modal-open {
-  pointer-events: none;
-  user-select: none;
+.annotation-modal-button-close {
+  width: 30px;
+  font-size: 20px;
+  color: #c0c5cb;
+  align-self: flex-end;
+  background-color: transparent;
+  border: none;
+  margin-bottom: 10px;
+  cursor: pointer;
 }

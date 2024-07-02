@@ -15,6 +15,9 @@ class AnnotationTool {
         'data-year': true,
         'data-publication': true,
         'data-journal': true,
+        'data-volume': true,
+        'data-volume-initial-page': true,
+        'data-volume-last-page': true,
       },
     };
   }
@@ -26,19 +29,25 @@ class AnnotationTool {
     this.range = null;
     this.currentSpan = null;
     this.saved = false;
+
+    this.addEventListenerToSpans();
   }
 
   render() {
     this.button = document.createElement('button');
     this.button.type = 'button';
     this.button.classList.add('ce-inline-tool', 'ce-inline-tool-annotation');
-    this.button.addEventListener('click', () => {
-      const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
-        this.range = selection.getRangeAt(0);
-        this.showModal();
-      }
-    });
+    this.button.addEventListener(
+      'click',
+      () => {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          this.range = selection.getRangeAt(0);
+          this.showModal();
+        }
+      },
+      false
+    );
 
     return this.button;
   }
@@ -57,7 +66,7 @@ class AnnotationTool {
 
     this.range.insertNode(span);
     this.api.selection.expandToTag(span);
-    this.currentSpan = span; // Set the currentSpan for the first time
+    this.currentSpan = span;
   }
 
   checkState() {
@@ -71,40 +80,83 @@ class AnnotationTool {
     );
   }
 
-  showModal() {
-    if (document.querySelector('.annotation-modal-overlay')) {
-      return;
-    }
-    this.saved = false;
+  generateLabelElement(html) {
+    const label = document.createElement('label');
+    label.innerHTML = html;
+    return label;
+  }
+
+  generateModal() {
     this.modal = document.createElement('div');
     this.modal.classList.add('annotation-modal-overlay');
-    this.modal.innerHTML = `
-      <div class="annotation-modal">
-        <label>
-          Name of the Publication:
-          <input type="text" id="annotation-publication">
-        </label>
-        <label>
-          Authors (comma-separated):
-          <input type="text" id="annotation-author">
-        </label>
-        <label>
-          Year of Publication:
-          <input type="text" id="annotation-year">
-        </label>
-        <label>
-          Journal:
-          <input type="text" id="annotation-journal">
-        </label>
-        <button id="annotation-save">Save</button>
-        <button id="annotation-cancel">Cancel</button>
-      </div>
-    `;
+
+    const divModal = document.createElement('div');
+    divModal.classList.add('annotation-modal');
+
+    const closeButton = document.createElement('button');
+    closeButton.classList.add('annotation-modal-button-close');
+    closeButton.id = 'annotation-cancel';
+    closeButton.innerText = '✖';
+
+    const saveButton = document.createElement('button');
+    saveButton.classList.add('annotation-modal-button');
+    saveButton.id = 'annotation-save';
+    saveButton.innerText = 'Save';
+
+    this.modal.appendChild(divModal);
+
+    divModal.appendChild(closeButton);
+    divModal.appendChild(
+      this.generateLabelElement(
+        'Publication Title <input class="cdx-input" type="text" id="annotation-publication">'
+      )
+    );
+    divModal.appendChild(
+      this.generateLabelElement(
+        'Authors (Lastname, Firstname initials, separated by comma) <input class="cdx-input" type="text" id="annotation-author">'
+      )
+    );
+    divModal.appendChild(
+      this.generateLabelElement(
+        'Year of Publication <input class="cdx-input" type="text" id="annotation-year">'
+      )
+    );
+    divModal.appendChild(
+      this.generateLabelElement(
+        'Journal Name (abbreviated) <input class="cdx-input" type="text" id="annotation-journal">'
+      )
+    );
+    divModal.appendChild(
+      this.generateLabelElement(
+        'Volume <input class="cdx-input" type="text" id="annotation-volume">'
+      )
+    );
+    divModal.appendChild(
+      this.generateLabelElement(
+        'Initial Page <input class="cdx-input" type="text" id="annotation-volume-initial-page">'
+      )
+    );
+    divModal.appendChild(
+      this.generateLabelElement(
+        'Last Page <input class="cdx-input" type="text" id="annotation-volume-last-page">'
+      )
+    );
+    divModal.appendChild(saveButton);
 
     document.body.appendChild(this.modal);
-    document.body.classList.add('unclickable-annotation-modal-open'); // Make the rest of the page unclickable
-    this.modal.style.pointerEvents = 'auto'; // Ensure modal and its contents are clickable
 
+    this.modal.style.pointerEvents = 'auto';
+
+    saveButton.addEventListener('click', () => {
+      this.saveMetadata();
+    });
+
+    closeButton.addEventListener('click', () => {
+      this.closeModal();
+    });
+  }
+
+  populateSpanData() {
     if (this.currentSpan) {
       document.getElementById('annotation-author').value =
         this.currentSpan.getAttribute('data-author') || '';
@@ -114,20 +166,28 @@ class AnnotationTool {
         this.currentSpan.getAttribute('data-publication') || this.currentSpan.textContent;
       document.getElementById('annotation-journal').value =
         this.currentSpan.getAttribute('data-journal') || '';
+      document.getElementById('annotation-volume').value =
+        this.currentSpan.getAttribute('data-volume') || '';
+      document.getElementById('annotation-volume-initial-page').value =
+        this.currentSpan.getAttribute('data-volume-initial-page') || '';
+      document.getElementById('annotation-volume-last-page').value =
+        this.currentSpan.getAttribute('data-volume-last-page') || '';
     } else if (this.range) {
       document.getElementById('annotation-publication').value = this.range.toString();
     }
+  }
+
+  showModal() {
+    if (document.querySelector('.annotation-modal-overlay')) {
+      return;
+    }
+    this.saved = false;
+
+    this.generateModal();
+    this.populateSpanData();
 
     const publicationInput = document.getElementById('annotation-publication');
     publicationInput.addEventListener('input', this.updateText.bind(this));
-
-    document.getElementById('annotation-save').addEventListener('click', () => {
-      this.saveMetadata();
-    });
-
-    document.getElementById('annotation-cancel').addEventListener('click', () => {
-      this.closeModal();
-    });
   }
 
   updateText(event) {
@@ -151,18 +211,25 @@ class AnnotationTool {
     const publication = document.getElementById('annotation-publication').value;
 
     if (!author.trim() || !publication.trim()) {
-      alert('Author and Name of the Publication are required fields.');
+      alert('Publication Title and Authors are required fields.');
       return;
     }
 
     const year = document.getElementById('annotation-year').value;
     const journal = document.getElementById('annotation-journal').value;
 
+    const volume = document.getElementById('annotation-volume').value;
+    const volumeInitialPage = document.getElementById('annotation-volume-initial-page').value;
+    const volumeLastPage = document.getElementById('annotation-volume-last-page').value;
+
     if (this.currentSpan) {
       this.currentSpan.setAttribute('data-author', author);
       this.currentSpan.setAttribute('data-year', year);
       this.currentSpan.setAttribute('data-publication', publication);
       this.currentSpan.setAttribute('data-journal', journal);
+      this.currentSpan.setAttribute('data-volume', volume);
+      this.currentSpan.setAttribute('data-volume-initial-page', volumeInitialPage);
+      this.currentSpan.setAttribute('data-volume-last-page', volumeLastPage);
     }
 
     this.saved = true;
@@ -174,7 +241,6 @@ class AnnotationTool {
       document.body.removeChild(this.modal);
       this.modal = null;
     }
-    document.body.classList.remove('unclickable-annotation-modal-open'); // Make the rest of the page clickable again
 
     if (
       !this.saved &&
@@ -182,7 +248,10 @@ class AnnotationTool {
       !this.currentSpan.getAttribute('data-author') &&
       !this.currentSpan.getAttribute('data-year') &&
       !this.currentSpan.getAttribute('data-publication') &&
-      !this.currentSpan.getAttribute('data-journal')
+      !this.currentSpan.getAttribute('data-journal') &&
+      !this.currentSpan.getAttribute('data-volume') &&
+      !this.currentSpan.getAttribute('data-volume-initial-page') &&
+      !this.currentSpan.getAttribute('data-volume-last-page')
     ) {
       this.removeSpan();
     }
