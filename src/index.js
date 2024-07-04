@@ -31,6 +31,7 @@ class AnnotationTool {
     this.saved = false;
 
     this.addEventListenerToSpans();
+    this.observeAnnotationDeletion();
   }
 
   render() {
@@ -256,6 +257,7 @@ class AnnotationTool {
       this.removeSpan();
     }
 
+    this.replaceAnnotationsWithReferences();
     this.range = null;
     this.currentSpan = null;
   }
@@ -290,6 +292,45 @@ class AnnotationTool {
   editAnnotation(span) {
     this.currentSpan = span;
     this.showModal();
+  }
+
+  replaceAnnotationsWithReferences() {
+    const annotations = document.querySelectorAll('span.annotation');
+    const referenceMap = new Map();
+    let currentIndex = 1;
+
+    annotations.forEach((annotation) => {
+      const publication = annotation.getAttribute('data-publication');
+      const author = annotation.getAttribute('data-author');
+      const uniqueKey = `${publication}|${author}`;
+
+      if (!referenceMap.has(uniqueKey)) {
+        referenceMap.set(uniqueKey, currentIndex);
+        currentIndex++;
+      }
+
+      const referenceIndex = referenceMap.get(uniqueKey);
+      annotation.innerHTML = `[${referenceIndex}]`;
+    });
+  }
+
+  observeAnnotationDeletion() {
+    const observer = new MutationObserver((mutations) => {
+      let annotationRemoved = false;
+      mutations.forEach((mutation) => {
+        mutation.removedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('annotation')) {
+            annotationRemoved = true;
+          }
+        });
+      });
+
+      if (annotationRemoved) {
+        this.replaceAnnotationsWithReferences();
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 }
 
