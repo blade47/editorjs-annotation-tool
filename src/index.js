@@ -114,7 +114,7 @@ class AnnotationTool {
     );
     divModal.appendChild(
       this.generateLabelElement(
-        'Authors (Lastname, Firstname initials, separated by comma) <input class="cdx-input" type="text" id="annotation-author">'
+        'Authors (new authors separated by comma, e.g. Doe J., Smith J.) <input class="cdx-input" type="text" id="annotation-author">'
       )
     );
     divModal.appendChild(
