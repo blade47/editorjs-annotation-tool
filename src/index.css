@@ -7,7 +7,7 @@
     background-repeat: no-repeat;
 }
 
-.annotation {
+.afl-annotation-tool {
   display: inline-block;
   padding: .25em 0;
   background: rgba(245,235,111,.29);

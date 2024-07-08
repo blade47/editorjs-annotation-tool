@@ -1,13 +1,21 @@
 import './index.css';
 
 class AnnotationTool {
+  static get CSS() {
+    return 'afl-annotation-tool';
+  }
+
+  static get EVENT_LISTENER() {
+    return 'at-has-data-listener';
+  }
+
   static get isInline() {
     return true;
   }
 
   static get sanitize() {
     return {
-      span: {
+      annotation: {
         class: true,
         contenteditable: true,
         style: true,
@@ -18,6 +26,7 @@ class AnnotationTool {
         'data-volume': true,
         'data-volume-initial-page': true,
         'data-volume-last-page': true,
+        encoding: true,
       },
     };
   }
@@ -27,10 +36,11 @@ class AnnotationTool {
     this.button = null;
     this.modal = null;
     this.range = null;
-    this.currentSpan = null;
+    this.currentWrapper = null;
     this.saved = false;
 
-    this.addEventListenerToSpans();
+    this.tag = 'ANNOTATION';
+    this.addEventListenersToAll();
     this.observeAnnotationDeletion();
   }
 
@@ -59,15 +69,16 @@ class AnnotationTool {
     }
 
     const selectedText = this.range.extractContents();
-    const span = document.createElement('span');
-    span.appendChild(selectedText);
-    span.classList.add('annotation');
-    span.setAttribute('contenteditable', 'false');
-    this.addEventListenerToSpan(span);
 
-    this.range.insertNode(span);
-    this.api.selection.expandToTag(span);
-    this.currentSpan = span;
+    const wrapper = document.createElement(this.tag);
+    wrapper.appendChild(selectedText);
+    wrapper.classList.add(AnnotationTool.CSS);
+    wrapper.setAttribute('contenteditable', 'false');
+    this.addEventListeners(wrapper);
+
+    this.range.insertNode(wrapper);
+    this.api.selection.expandToTag(wrapper);
+    this.currentWrapper = wrapper;
   }
 
   checkState() {
@@ -77,7 +88,7 @@ class AnnotationTool {
     const parent = selection.anchorNode.parentElement;
     this.button.classList.toggle(
       'ce-inline-tool--active',
-      parent && parent.closest('span.annotation')
+      parent && parent.closest(AnnotationTool.CSS)
     );
   }
 
@@ -157,22 +168,22 @@ class AnnotationTool {
     });
   }
 
-  populateSpanData() {
-    if (this.currentSpan) {
+  populateWrapperData() {
+    if (this.currentWrapper) {
       document.getElementById('annotation-author').value =
-        this.currentSpan.getAttribute('data-author') || '';
+        this.currentWrapper.getAttribute('data-author') || '';
       document.getElementById('annotation-year').value =
-        this.currentSpan.getAttribute('data-year') || '';
+        this.currentWrapper.getAttribute('data-year') || '';
       document.getElementById('annotation-publication').value =
-        this.currentSpan.getAttribute('data-publication') || this.currentSpan.textContent;
+        this.currentWrapper.getAttribute('data-publication') || this.currentWrapper.textContent;
       document.getElementById('annotation-journal').value =
-        this.currentSpan.getAttribute('data-journal') || '';
+        this.currentWrapper.getAttribute('data-journal') || '';
       document.getElementById('annotation-volume').value =
-        this.currentSpan.getAttribute('data-volume') || '';
+        this.currentWrapper.getAttribute('data-volume') || '';
       document.getElementById('annotation-volume-initial-page').value =
-        this.currentSpan.getAttribute('data-volume-initial-page') || '';
+        this.currentWrapper.getAttribute('data-volume-initial-page') || '';
       document.getElementById('annotation-volume-last-page').value =
-        this.currentSpan.getAttribute('data-volume-last-page') || '';
+        this.currentWrapper.getAttribute('data-volume-last-page') || '';
     } else if (this.range) {
       document.getElementById('annotation-publication').value = this.range.toString();
     }
@@ -185,7 +196,7 @@ class AnnotationTool {
     this.saved = false;
 
     this.generateModal();
-    this.populateSpanData();
+    this.populateWrapperData();
 
     const publicationInput = document.getElementById('annotation-publication');
     publicationInput.addEventListener('input', this.updateText.bind(this));
@@ -194,16 +205,16 @@ class AnnotationTool {
   updateText(event) {
     const newText = event.target.value;
 
-    if (this.currentSpan) {
-      this.currentSpan.textContent = newText;
+    if (this.currentWrapper) {
+      this.currentWrapper.textContent = newText;
     } else if (this.range) {
-      const span = document.createElement('span');
-      span.textContent = newText;
-      span.classList.add('annotation');
+      const wrapper = document.createElement(this.tag);
+      wrapper.textContent = newText;
+      wrapper.classList.add(AnnotationTool.CSS);
 
       this.range.deleteContents();
-      this.range.insertNode(span);
-      this.currentSpan = span;
+      this.range.insertNode(wrapper);
+      this.currentWrapper = wrapper;
     }
   }
 
@@ -223,14 +234,14 @@ class AnnotationTool {
     const volumeInitialPage = document.getElementById('annotation-volume-initial-page').value;
     const volumeLastPage = document.getElementById('annotation-volume-last-page').value;
 
-    if (this.currentSpan) {
-      this.currentSpan.setAttribute('data-author', author);
-      this.currentSpan.setAttribute('data-year', year);
-      this.currentSpan.setAttribute('data-publication', publication);
-      this.currentSpan.setAttribute('data-journal', journal);
-      this.currentSpan.setAttribute('data-volume', volume);
-      this.currentSpan.setAttribute('data-volume-initial-page', volumeInitialPage);
-      this.currentSpan.setAttribute('data-volume-last-page', volumeLastPage);
+    if (this.currentWrapper) {
+      this.currentWrapper.setAttribute('data-author', author);
+      this.currentWrapper.setAttribute('data-year', year);
+      this.currentWrapper.setAttribute('data-publication', publication);
+      this.currentWrapper.setAttribute('data-journal', journal);
+      this.currentWrapper.setAttribute('data-volume', volume);
+      this.currentWrapper.setAttribute('data-volume-initial-page', volumeInitialPage);
+      this.currentWrapper.setAttribute('data-volume-last-page', volumeLastPage);
     }
 
     this.saved = true;
@@ -245,57 +256,56 @@ class AnnotationTool {
 
     if (
       !this.saved &&
-      this.currentSpan &&
-      !this.currentSpan.getAttribute('data-author') &&
-      !this.currentSpan.getAttribute('data-year') &&
-      !this.currentSpan.getAttribute('data-publication') &&
-      !this.currentSpan.getAttribute('data-journal') &&
-      !this.currentSpan.getAttribute('data-volume') &&
-      !this.currentSpan.getAttribute('data-volume-initial-page') &&
-      !this.currentSpan.getAttribute('data-volume-last-page')
+      this.currentWrapper &&
+      !this.currentWrapper.getAttribute('data-author') &&
+      !this.currentWrapper.getAttribute('data-year') &&
+      !this.currentWrapper.getAttribute('data-publication') &&
+      !this.currentWrapper.getAttribute('data-journal') &&
+      !this.currentWrapper.getAttribute('data-volume') &&
+      !this.currentWrapper.getAttribute('data-volume-initial-page') &&
+      !this.currentWrapper.getAttribute('data-volume-last-page')
     ) {
-      this.removeSpan();
+      this.removeWrapper();
     }
 
     this.replaceAnnotationsWithReferences();
     this.range = null;
-    this.currentSpan = null;
+    this.currentWrapper = null;
   }
 
-  removeSpan() {
-    if (this.currentSpan) {
-      const parent = this.currentSpan.parentNode;
-      while (this.currentSpan.firstChild) {
-        parent.insertBefore(this.currentSpan.firstChild, this.currentSpan);
+  removeWrapper() {
+    if (this.currentWrapper) {
+      const parent = this.currentWrapper.parentNode;
+      while (this.currentWrapper.firstChild) {
+        parent.insertBefore(this.currentWrapper.firstChild, this.currentWrapper);
       }
-      parent.removeChild(this.currentSpan);
+      parent.removeChild(this.currentWrapper);
     }
   }
 
-  addEventListenerToSpan(span) {
-    if (span) {
-      const eventListenerExists = !!span.getAttribute('data-event-listener-added');
+  addEventListeners(wrapper) {
+    if (wrapper) {
+      const eventListenerExists = !!wrapper.getAttribute(AnnotationTool.EVENT_LISTENER);
       if (!eventListenerExists) {
-        span.addEventListener('click', () => this.editAnnotation(span));
-        span.setAttribute('data-event-listener-added', 'true');
+        wrapper.addEventListener('click', () => this.editAnnotation(wrapper));
+        wrapper.setAttribute(AnnotationTool.EVENT_LISTENER, 'true');
       }
     }
   }
 
-  addEventListenerToSpans() {
-    const spans = document.querySelectorAll('span.annotation');
-    spans.forEach((span) => {
-      this.addEventListenerToSpan(span);
+  addEventListenersToAll() {
+    document.querySelectorAll(this.tag).forEach((annotationTag) => {
+      this.addEventListeners(annotationTag);
     });
   }
 
-  editAnnotation(span) {
-    this.currentSpan = span;
+  editAnnotation(wrapper) {
+    this.currentWrapper = wrapper;
     this.showModal();
   }
 
   replaceAnnotationsWithReferences() {
-    const annotations = document.querySelectorAll('span.annotation');
+    const annotations = document.querySelectorAll(`${this.tag}.${AnnotationTool.CSS}`);
     const referenceMap = new Map();
     let currentIndex = 1;
 
@@ -319,7 +329,7 @@ class AnnotationTool {
       let annotationRemoved = false;
       mutations.forEach((mutation) => {
         mutation.removedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains('annotation')) {
+          if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains(AnnotationTool.CSS)) {
             annotationRemoved = true;
           }
         });
