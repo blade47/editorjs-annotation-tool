@@ -34,8 +34,6 @@ class AnnotationTool {
   constructor({ api }) {
     this.api = api;
     this.button = null;
-    this.modal = null;
-    this.range = null;
     this.currentWrapper = null;
     this.saved = false;
 
@@ -48,27 +46,16 @@ class AnnotationTool {
     this.button = document.createElement('button');
     this.button.type = 'button';
     this.button.classList.add('ce-inline-tool', 'ce-inline-tool-annotation');
-    this.button.addEventListener(
-      'click',
-      () => {
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0) {
-          this.range = selection.getRangeAt(0);
-          this.showModal();
-        }
-      },
-      false
-    );
 
     return this.button;
   }
 
-  surround() {
-    if (!this.range) {
+  surround(range) {
+    if (!range) {
       return;
     }
 
-    const selectedText = this.range.extractContents();
+    const selectedText = range.extractContents();
 
     const wrapper = document.createElement(this.tag);
     wrapper.appendChild(selectedText);
@@ -76,14 +63,14 @@ class AnnotationTool {
     wrapper.setAttribute('contenteditable', 'false');
     this.addEventListeners(wrapper);
 
-    this.range.insertNode(wrapper);
+    range.insertNode(wrapper);
     this.api.selection.expandToTag(wrapper);
     this.currentWrapper = wrapper;
+    this.showOverlay();
   }
 
-  checkState() {
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return;
+  checkState(selection) {
+    if (!selection.rangeCount || selection.rangeCount <= 0) return;
 
     const parent = selection.anchorNode.parentElement;
     this.button.classList.toggle(
@@ -92,80 +79,99 @@ class AnnotationTool {
     );
   }
 
-  generateLabelElement(html) {
+  generateLabelElement(labelText, inputId, index, type = 'text') {
     const label = document.createElement('label');
-    label.innerHTML = html;
-    return label;
+    label.innerText = labelText;
+    const input = document.createElement('input');
+    input.setAttribute('id', inputId);
+    input.setAttribute('type', type);
+    input.classList.add('cdx-input');
+    label.setAttribute('for', inputId);
+
+    // label.appendChild(input);
+    return [label, input];
   }
 
-  generateModal() {
-    this.modal = document.createElement('div');
-    this.modal.classList.add('annotation-modal-overlay');
-
-    const divModal = document.createElement('div');
-    divModal.classList.add('annotation-modal');
+  generateOverlay() {
+    const overlay = document.createElement('div');
+    overlay.classList.add('annotation-overlay');
 
     const closeButton = document.createElement('button');
-    closeButton.classList.add('annotation-modal-button-close');
+    closeButton.classList.add('annotation-overlay-button-close');
     closeButton.id = 'annotation-cancel';
     closeButton.innerText = '✖';
 
+    const buttonsWrapper = document.createElement('div');
+    buttonsWrapper.classList.add('annotation-overlay-buttons-wrapper');
+    const removeButton = document.createElement('button');
+    removeButton.classList.add('annotation-overlay-button', 'annotation-overlay-remove-button');
+    removeButton.id = 'annotation-remove';
+    removeButton.innerText = 'Remove';
+    buttonsWrapper.appendChild(removeButton);
+
     const saveButton = document.createElement('button');
-    saveButton.classList.add('annotation-modal-button');
+    saveButton.classList.add('annotation-overlay-button', 'annotation-overlay-save-button');
     saveButton.id = 'annotation-save';
     saveButton.innerText = 'Save';
+    buttonsWrapper.appendChild(saveButton);
 
-    this.modal.appendChild(divModal);
+    overlay.appendChild(closeButton);
+    overlay.append(...this.generateLabelElement('Publication Title', 'annotation-publication', 1));
+    overlay.append(
+      ...this.generateLabelElement(
+        'Authors (new authors separated by comma, e.g. Doe J., Smith J.)',
+        'annotation-author',
+        2
+      )
+    );
+    overlay.append(
+      ...this.generateLabelElement('Year of Publication', 'annotation-year', 3, 'number')
+    );
+    overlay.append(
+      ...this.generateLabelElement('Journal Name (abbreviated)', 'annotation-journal', 4)
+    );
+    overlay.append(...this.generateLabelElement('Volume', 'annotation-volume', 5));
+    overlay.append(
+      ...this.generateLabelElement('Initial Page', 'annotation-volume-initial-page', 6)
+    );
+    overlay.append(...this.generateLabelElement('Last Page', 'annotation-volume-last-page', 7));
+    overlay.appendChild(buttonsWrapper);
 
-    divModal.appendChild(closeButton);
-    divModal.appendChild(
-      this.generateLabelElement(
-        'Publication Title <input class="cdx-input" type="text" id="annotation-publication">'
-      )
-    );
-    divModal.appendChild(
-      this.generateLabelElement(
-        'Authors (new authors separated by comma, e.g. Doe J., Smith J.) <input class="cdx-input" type="text" id="annotation-author">'
-      )
-    );
-    divModal.appendChild(
-      this.generateLabelElement(
-        'Year of Publication <input class="cdx-input" type="text" id="annotation-year">'
-      )
-    );
-    divModal.appendChild(
-      this.generateLabelElement(
-        'Journal Name (abbreviated) <input class="cdx-input" type="text" id="annotation-journal">'
-      )
-    );
-    divModal.appendChild(
-      this.generateLabelElement(
-        'Volume <input class="cdx-input" type="text" id="annotation-volume">'
-      )
-    );
-    divModal.appendChild(
-      this.generateLabelElement(
-        'Initial Page <input class="cdx-input" type="text" id="annotation-volume-initial-page">'
-      )
-    );
-    divModal.appendChild(
-      this.generateLabelElement(
-        'Last Page <input class="cdx-input" type="text" id="annotation-volume-last-page">'
-      )
-    );
-    divModal.appendChild(saveButton);
+    const wrapper = this.api.selection.findParentTag(this.tag);
 
-    document.body.appendChild(this.modal);
+    wrapper.appendChild(overlay);
+    // overlay.style.pointerEvents = 'auto';
 
-    this.modal.style.pointerEvents = 'auto';
-
-    saveButton.addEventListener('click', () => {
+    saveButton.addEventListener('click', (e) => {
+      this.stopEventPropagation(e);
       this.saveMetadata();
     });
 
-    closeButton.addEventListener('click', () => {
-      this.closeModal();
+    closeButton.addEventListener('click', (e) => {
+      this.stopEventPropagation(e);
+      this.closeOverlay();
     });
+    removeButton.addEventListener('click', (e) => {
+      this.stopEventPropagation(e);
+      this.removeWrapper();
+    });
+
+    overlay.addEventListener('click', this.stopEventPropagation);
+  }
+
+  stopEventPropagation(event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  extractTextFromElement(element) {
+    return [].reduce.call(
+      element.childNodes,
+      function (a, b) {
+        return a + (b.nodeType === 3 ? b.textContent : '');
+      },
+      ''
+    );
   }
 
   populateWrapperData() {
@@ -175,7 +181,8 @@ class AnnotationTool {
       document.getElementById('annotation-year').value =
         this.currentWrapper.getAttribute('data-year') || '';
       document.getElementById('annotation-publication').value =
-        this.currentWrapper.getAttribute('data-publication') || this.currentWrapper.textContent;
+        this.currentWrapper.getAttribute('data-publication') ||
+        this.extractTextFromElement(this.currentWrapper);
       document.getElementById('annotation-journal').value =
         this.currentWrapper.getAttribute('data-journal') || '';
       document.getElementById('annotation-volume').value =
@@ -184,38 +191,17 @@ class AnnotationTool {
         this.currentWrapper.getAttribute('data-volume-initial-page') || '';
       document.getElementById('annotation-volume-last-page').value =
         this.currentWrapper.getAttribute('data-volume-last-page') || '';
-    } else if (this.range) {
-      document.getElementById('annotation-publication').value = this.range.toString();
     }
   }
 
-  showModal() {
-    if (document.querySelector('.annotation-modal-overlay')) {
+  showOverlay() {
+    if (document.querySelector('.annotation-overlay')) {
       return;
     }
     this.saved = false;
 
-    this.generateModal();
+    this.generateOverlay();
     this.populateWrapperData();
-
-    const publicationInput = document.getElementById('annotation-publication');
-    publicationInput.addEventListener('input', this.updateText.bind(this));
-  }
-
-  updateText(event) {
-    const newText = event.target.value;
-
-    if (this.currentWrapper) {
-      this.currentWrapper.textContent = newText;
-    } else if (this.range) {
-      const wrapper = document.createElement(this.tag);
-      wrapper.textContent = newText;
-      wrapper.classList.add(AnnotationTool.CSS);
-
-      this.range.deleteContents();
-      this.range.insertNode(wrapper);
-      this.currentWrapper = wrapper;
-    }
   }
 
   saveMetadata() {
@@ -245,15 +231,13 @@ class AnnotationTool {
     }
 
     this.saved = true;
-    this.closeModal();
+    this.closeOverlay();
   }
 
-  closeModal() {
-    if (this.modal) {
-      document.body.removeChild(this.modal);
-      this.modal = null;
-    }
-
+  closeOverlay() {
+    document.querySelectorAll('div.annotation-overlay').forEach((overlay) => {
+      overlay.remove();
+    });
     if (
       !this.saved &&
       this.currentWrapper &&
@@ -269,17 +253,21 @@ class AnnotationTool {
     }
 
     this.replaceAnnotationsWithReferences();
-    this.range = null;
+
     this.currentWrapper = null;
   }
 
   removeWrapper() {
     if (this.currentWrapper) {
       const parent = this.currentWrapper.parentNode;
-      while (this.currentWrapper.firstChild) {
-        parent.insertBefore(this.currentWrapper.firstChild, this.currentWrapper);
-      }
-      parent.removeChild(this.currentWrapper);
+      const content = this.currentWrapper.getAttribute('data-publication')
+        ? document.createTextNode(this.currentWrapper.getAttribute('data-publication'))
+        : this.currentWrapper.firstChild?.nodeType === Node.TEXT_NODE
+          ? this.currentWrapper.firstChild
+          : '';
+      parent.insertBefore(content, this.currentWrapper);
+
+      this.currentWrapper.remove();
     }
   }
 
@@ -301,7 +289,7 @@ class AnnotationTool {
 
   editAnnotation(wrapper) {
     this.currentWrapper = wrapper;
-    this.showModal();
+    this.showOverlay();
   }
 
   replaceAnnotationsWithReferences() {
