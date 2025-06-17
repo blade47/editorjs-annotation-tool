@@ -31,15 +31,16 @@ class AnnotationTool {
     };
   }
 
-  constructor({ api }) {
+  constructor({ api, config }) {
     this.api = api;
     this.button = null;
     this.currentWrapper = null;
     this.saved = false;
+    this.config = config || {};
 
     this.tag = 'ANNOTATION';
     this.addEventListenersToAll();
-    this.observeAnnotationDeletion();
+    this.closeOverlayOnBodyClick = this.closeOverlayOnBodyClick.bind(this);
   }
 
   render() {
@@ -140,7 +141,6 @@ class AnnotationTool {
     const wrapper = this.api.selection.findParentTag(this.tag);
 
     wrapper.appendChild(overlay);
-    // overlay.style.pointerEvents = 'auto';
 
     saveButton.addEventListener('click', (e) => {
       this.stopEventPropagation(e);
@@ -156,11 +156,20 @@ class AnnotationTool {
       this.removeWrapper();
     });
 
+    this.repositionEquationArea.call(this, wrapper, overlay);
+
     overlay.addEventListener('click', this.stopEventPropagation);
+    requestAnimationFrame(() => {
+      document.body.addEventListener('click', this.closeOverlayOnBodyClick);
+    });
+  }
+
+  closeOverlayOnBodyClick(e) {
+    this.stopEventPropagation(e);
+    this.closeOverlay();
   }
 
   stopEventPropagation(event) {
-    event.preventDefault();
     event.stopPropagation();
   }
 
@@ -235,6 +244,7 @@ class AnnotationTool {
   }
 
   closeOverlay() {
+    document.body.removeEventListener('click', this.closeOverlayOnBodyClick);
     document.querySelectorAll('div.annotation-overlay').forEach((overlay) => {
       overlay.remove();
     });
@@ -275,7 +285,10 @@ class AnnotationTool {
     if (wrapper) {
       const eventListenerExists = !!wrapper.getAttribute(AnnotationTool.EVENT_LISTENER);
       if (!eventListenerExists) {
-        wrapper.addEventListener('click', () => this.editAnnotation(wrapper));
+        wrapper.addEventListener('click', (e) => {
+          this.stopEventPropagation(e);
+          this.editAnnotation(wrapper);
+        });
         wrapper.setAttribute(AnnotationTool.EVENT_LISTENER, 'true');
       }
     }
@@ -312,23 +325,36 @@ class AnnotationTool {
     });
   }
 
-  observeAnnotationDeletion() {
-    const observer = new MutationObserver((mutations) => {
-      let annotationRemoved = false;
-      mutations.forEach((mutation) => {
-        mutation.removedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE && node.classList.contains(AnnotationTool.CSS)) {
-            annotationRemoved = true;
-          }
-        });
-      });
+  repositionEquationArea(target, overlay) {
+    this.config.repositionOverlay?.(target, overlay) ??
+      this.repositionOverlay(target, overlay, this.config.bufferSpacing ?? 0);
+  }
 
-      if (annotationRemoved) {
-        this.replaceAnnotationsWithReferences();
-      }
-    });
+  repositionOverlay(target, overlay, bufferSpacing) {
+    const overlayRect = overlay.getBoundingClientRect();
+    const overlayHeight = overlayRect.height;
+    const targetRect = target.getBoundingClientRect();
+    const spacing = 10;
 
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Calculate available space
+    const spaceAbove = targetRect.top;
+    const spaceBelow = window.innerHeight - targetRect.bottom;
+
+    // Decide position and height
+    let top;
+    let maxHeight;
+    if (spaceBelow >= overlayHeight || spaceBelow >= spaceAbove) {
+      // Position below
+      top = targetRect.height + spacing;
+      maxHeight = spaceBelow - spacing - bufferSpacing;
+    } else {
+      // Position above
+      maxHeight = spaceAbove - spacing - bufferSpacing;
+      top = -Math.min(overlayHeight, maxHeight) - spacing;
+    }
+
+    overlay.style.top = `${top}px`;
+    overlay.style.maxHeight = `${maxHeight}px`;
   }
 }
 
