@@ -1,10 +1,10 @@
 .ce-inline-tool-annotation {
-  width: 24px;
   background-color: transparent;
-  background-image: url('annotation.svg');
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .afl-annotation-tool {
@@ -47,16 +47,21 @@
   min-height: 300px;
 }
 
+.annotation-field-container {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.annotation-field-container:first-of-type {
+  margin-top: 0px;
+}
+
 .annotation-overlay label {
   display: block;
-  margin-top: 8px;
+  margin-bottom: 4px;
   width: 100%;
   font-size: 12px;
   font-weight: 500;
-}
-
-.annotation-overlay label:first-of-type {
-  margin-top: 0px !important;
 }
 
 .annotation-overlay input {
@@ -65,6 +70,26 @@
   box-sizing: border-box;
   font-size: 11px;
   border-radius: 4px;
+  border: 1px solid #e1e8ed;
+  transition: border-color 0.2s ease;
+}
+
+.annotation-overlay input:focus {
+  outline: none;
+  border-color: #1f1646;
+}
+
+.annotation-overlay input.error {
+  border-color: #dc3545;
+  background-color: #fff5f5;
+}
+
+.annotation-field-error {
+  display: none;
+  color: #dc3545;
+  font-size: 11px;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 
 .annotation-overlay-buttons-wrapper {
@@ -91,6 +116,12 @@
 .annotation-overlay-button.annotation-overlay-save-button {
   color: white;
   background-color: #1f1646;
+}
+
+.annotation-overlay-button.annotation-overlay-save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #6b7280;
 }
 
 .annotation-overlay-button.annotation-overlay-remove-button {
