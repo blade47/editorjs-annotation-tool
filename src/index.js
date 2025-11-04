@@ -622,7 +622,11 @@ class AnnotationTool {
     const resizeObserver = new ResizeObserver(() => {
       this.repositionEquationArea(target, overlay);
     });
+
+    // Watch both the overlay AND the target (annotation wrapper)
+    // So popup stays anchored if annotation text wraps/changes height
     resizeObserver.observe(overlay);
+    resizeObserver.observe(target);
 
     // Store observer to disconnect later
     overlay.resizeObserver = resizeObserver;
