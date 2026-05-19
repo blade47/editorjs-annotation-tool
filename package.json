@@ -9,7 +9,10 @@
   ],
   "description": "Annotation Tool for Editor.js",
   "license": "MIT",
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blade47/editorjs-annotation-tool.git"
+  },
   "files": [
     "dist"
   ],
@@ -32,17 +35,17 @@
     "name": "AFL Solutions SRL"
   },
   "devDependencies": {
-    "vite": "^4.5.14",
-    "vite-plugin-css-injected-by-js": "^3.5.1"
-  },
-  "dependencies": {
-    "@codexteam/icons": "^0.0.5",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-perfectionist": "^2.11.0",
     "eslint-plugin-prettier": "^5.4.0",
     "eslint-plugin-unused-imports": "^4.1.4",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "vite": "^4.5.14",
+    "vite-plugin-css-injected-by-js": "^3.5.1"
+  },
+  "dependencies": {
+    "@codexteam/icons": "^0.0.5"
   }
 }
